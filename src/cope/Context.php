@@ -811,6 +811,17 @@ class Context {
 	    }
 	    return false;
 	}
+	
+	/**
+	 * Returns true it the response status is 200.
+	 * @return boolean
+	 */
+	public static function hasStatus($status = 200) {
+	    if (is_array($status)) {
+	        return in_array(self::getStatus(),$status);
+	    }
+	    return (self::getStatus() == $status);
+	}
 
 	/**
 	 * Import json data into the context parameters
@@ -855,14 +866,6 @@ class Context {
 	        return true;
 	    }
 	    return false;
-	}
-
-	/**
-	 * Returns true it the response status is 200.
-	 * @return boolean
-	 */
-	public static function isOk() {
-	    return (200 == self::getStatus()) ? true : false;
 	}
 
 	/**
