@@ -1,17 +1,17 @@
 {
-    "name": "nusbaum/cope",
-    "description": "Command Oriented Php Environment (cope)",
-    "type": "library",
-    "license": "MIT",
-    "authors": [
-        {
-            "name": "nusbaum",
-            "email": "nusbaum@mac.com"
-        }
-    ],
-    "minimum-stability": "stable",
-    "autoload": {
-        "psr-4": {"nusbaum\\cope\\": "src/"}
-    },
-    "require": {}
+	"name" : "nusbaum/cope",
+	"description" : "Command Oriented Php Environment (cope)",
+	"type" : "library",
+	"license" : "MIT",
+	"authors" : [{
+			"name" : "nusbaum",
+			"email" : "nusbaum@mac.com"
+		}
+	],
+	"minimum-stability" : "dev",
+	"autoload" : {
+		"psr-4" : {
+			"nusbaum\\cope\\" : "src/"
+		}
+	}
 }
