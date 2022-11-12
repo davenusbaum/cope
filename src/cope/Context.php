@@ -328,6 +328,23 @@ class Context {
 	    }
 		return $map;
 	}
+	
+	/**
+	 * Returns the full path to an application script.
+	 * @param string $name The name of the command property
+	 * @return string the script file name
+	 */
+	public static function getCommandScript($name) {
+	    $script = static::getCommand($name);
+	    if($script) {
+	        return static::getScriptDir()
+	           .'/'
+	           . static::getScope()
+	           . '/'
+	           . $script;
+	    }
+	    return null;
+	}
 
 	/**
 	 * The content type for the request.
