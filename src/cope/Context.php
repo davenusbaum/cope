@@ -330,6 +330,24 @@ class Context {
 	}
 	
 	/**
+	 * Returns the path to a page file.
+	 *
+	 * @param string $name The name of the page
+	 * @return string the page file name
+	 */
+	public static function getCommandPage() {
+	    $name = static::getCommand('page');
+	    if($name) {
+	        return self::getPageDir()
+	           . '/'
+	           . self::getScope()
+	           . '/'
+	           . $name;
+	    }
+	    return null;
+	}
+	
+	/**
 	 * Returns the full path to an application script.
 	 * @param string $name The name of the command property
 	 * @return string the script file name
