@@ -848,14 +848,57 @@ class Context {
 	}
 	
 	/**
-	 * Returns true it the response status is 200.
-	 * @return boolean
+	 * Returns a url for based on the current context.
+	 * Parameters for baseUrl, kiosk, scope, action will
+	 * override the values from the current context.
+	 * Any additional parameters will simply be parameters
+	 * on the query string.
+	 * @param array $parameters
+	 * @return string
 	 */
-	public static function hasStatus($status = 200) {
-	    if (is_array($status)) {
-	        return in_array(self::getStatus(),$status);
+	public static function href($parameters) {
+	    
+	    $url='';
+	    
+	    // set the base url
+	    if(isset($parameters['baseUrl'])) {
+	        $url .= $parameters['baseUrl'];
+	        unset($parameters['baseUrl']);
+	    } else {
+	        $url .= self::getBaseUrl();
 	    }
-	    return (self::getStatus() == $status);
+	    
+	    // set the kiosk
+	    if(isset($parameters['kiosk'])) {
+	        $kiosk =  $parameters['kiosk'];
+	        unset($parameters['kiosk']);
+	    } else {
+	        $kiosk = self::getKiosk();
+	    }
+	    if(!empty($kiosk)) {
+	        $url .= '/'.$kiosk;
+	    }
+	    
+	    // set the scope
+	    if(isset($parameters['scope'])) {
+	        $url .= '/'.$parameters['scope'];
+	        unset($parameters['scope']);
+	    } else {
+	        $url .= '/'.self::getScope();
+	    }
+	    
+	    if(isset($parameters['action'])) {
+	        $url .= '/'. $parameters['action'].'.do';
+	        unset($parameters['action']);
+	    } else {
+	        $url .= '/'. self::getAction().'.do';
+	    }
+	    
+	    if(count($parameters)) {
+	        $url .= '?'.http_build_query($parameters);
+	    }
+	    
+	    return $url;
 	}
 
 	/**
@@ -920,19 +963,33 @@ class Context {
 	}
 
 	/**
-	 * Returns true if the response code is still 200.
-	 * @return boolean
-	 */
-	public static function isResponseOk() {
-	    return (200 == http_response_code()) ? true : false;
-	}
-
-	/**
 	 * Return true if the command request is a
 	 * @return boolean
 	 */
 	public static function isPost() {
 		return ('POST' === self::getMethod() ? true : false);
+	}
+	
+	/**
+	 * Returns true if the response status code is still < 300.
+	 * @param int $accept additional valid status codes as parameters
+	 * @return boolean
+	 */
+	public static function isStatusOk($accept = null) {
+	    // check for a code less than 300
+	    if($status = self::getStatus() < 300) {
+	        return true;
+	    }
+	    if($accept !== null) {
+	        if(func_num_args() == 1) {
+	            if($status === $accept) {
+	                return true;
+	            }
+	        } else if(in_array($status, func_get_args())) {
+	            return true;
+	        }
+	    }
+	    return false;
 	}
 
 	/**
