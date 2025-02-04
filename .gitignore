@@ -26,7 +26,8 @@ $RECYCLE.BIN/
 .LSOverride
 
 # Icon must end with two \r
-Icon
+Icon
+
 
 # Thumbnails
 ._*
@@ -57,4 +58,6 @@ Temporary Items
 
 *.swp
 
-/vendor/
+.idea/*
+vendor/**
+tests/.phpunit.cache/test-results
