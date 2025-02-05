@@ -1,10 +1,6 @@
 <?php
-/**
- * Command.php
- *
- * Copyright 2020 SchedulesPlus LLC
- */
-namespace Nusbaum\Cope;
+
+namespace Cope;
 
 /**
  * Data structure describing a web command in the cope framework.

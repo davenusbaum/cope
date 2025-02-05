@@ -1,11 +1,9 @@
 <?php
-/**
- * Context.php
- * 
- * @copyright 2020 SchedulesPlus LLC
- */
-namespace Nusbaum\Cope;
-use Nusbaum\Cope\StringHelper as Str;
+
+namespace Cope;
+
+use Cope\StringHelper as Str;
+use Random\RandomException;
 
 /**
  * The cope Context supports a simple command driven MVC framework and
@@ -19,18 +17,18 @@ class Context {
 
     /** User key */
     const USER = 'user';
-    
+
     const SUCCESS = 0;
     const NOTICE = 1;
     const WARNING = 2;
     const ERROR = 3;
-    
+
     /** @var string The base directory */
     private static $baseDir;
-    
+
     /** @var string The base path for the application url. */
     private static $basePath;
-    
+
 	/** @var boolean True if an error message has been sent. */
 	private static $hasError = false;
 
@@ -42,7 +40,7 @@ class Context {
 
 	/** @var array The command properties for the current request. */
 	private static $command;
-	
+
 	/** @var array The default command properties */
 	private static $commandDefaults;
 
@@ -93,7 +91,7 @@ class Context {
 
 	/** @var string The full name of the base script for this request. */
 	private static $scriptName;
-	
+
 	/** @var array Response variables for the current request. */
 	protected static $state;
 
@@ -114,10 +112,10 @@ class Context {
 	 * @param array $parameters
 	 * @return string
 	 */
-	public static function buildUrl($parameters) {
-	    
+	public static function buildUrl($parameters): string {
+
 	    $url='';
-	    
+
 	    // set the base url
 	    if(isset($parameters['baseUrl'])) {
 	        $url .= $parameters['baseUrl'];
@@ -125,7 +123,7 @@ class Context {
 	    } else {
 	        $url .= self::getBaseUrl();
 	    }
-	    
+
 	    // set the kiosk
 	    if(isset($parameters['kiosk'])) {
 	        $kiosk =  $parameters['kiosk'];
@@ -136,7 +134,7 @@ class Context {
 	    if(!empty($kiosk)) {
 	        $url .= '/'.$kiosk;
 	    }
-	    
+
 	    // set the scope
 	    if(isset($parameters['scope'])) {
 	        $url .= '/'.$parameters['scope'];
@@ -144,21 +142,30 @@ class Context {
 	    } else {
 	        $url .= '/'.self::getScope();
 	    }
-	    
+
 	    if(isset($parameters['action'])) {
 	        $url .= '/'. $parameters['action'].'.do';
 	        unset($parameters['action']);
 	    } else {
 	        $url .= '/'. self::getAction().'.do';
 	    }
-	    
+
 	    if(count($parameters)) {
 	        $url .= '?'.http_build_query($parameters);
 	    }
-	    
+
 	    return $url;
 	}
-	
+
+    /**
+     * Compare a crsf token with the token for this session
+     * @param string $token
+     * @return boolean
+     */
+    public static function checkToken($token): bool {
+        return (hash_equals(self::getToken(), $token));
+    }
+
 	/**
 	 * Clear the current context.
 	 */
@@ -167,23 +174,23 @@ class Context {
 	        session_unset();
 	    }
 	}
-	
+
 	/**
 	 * Get a global value.
 	 * @param string $name
-	 * @param mixed $mixed
+	 * @param mixed $default
 	 * @return mixed
 	 */
-	public static function get($name,$default = null) {
-		return (isset(self::$state[$name]) ? self::$state[$name] : $default);
+	public static function get(string $name, $default = null) {
+		return (self::$state[$name] ?? $default);
 	}
 
 	/**
 	 * Return the action requested through the url path parameters.
 	 * The 'do' parameter without the '.do'.
-	 * @return string
+	 * @return string|null
 	 */
-	public static function getAction() {
+	public static function getAction(): ?string {
 	    return self::getPathParams()['action'];
 	}
 
@@ -193,7 +200,7 @@ class Context {
 	 * @param mixed $default
 	 * @return mixed
 	 */
-	public static function getAttribute($name,$default=null) {
+	public static function getAttribute(string $name, $default=null) {
 	    if(!isset($_SESSION)) {
 	        self::start();
 	    }
@@ -206,11 +213,11 @@ class Context {
 	/**
 	 * Returns the path to the base directory for the environment.
 	 * Defaults to one directory below the current directory, but
-	 * can be explicitly set with COPE_BASE_DIR environment variable.
+	 * can be explicitly set.
 	 *
 	 * @return string
 	 */
-	public static function getBaseDir() {
+	public static function getBaseDir(): string {
 	    return self::$baseDir ??
 	       (self::$baseDir = dirname(getcwd()));
 	}
@@ -224,7 +231,7 @@ class Context {
 	 * This is equivalent to Apache RewriteBase
 	 * @return string
 	 */
-	 public static function getBasePath() {
+	 public static function getBasePath(): string {
 	 	if(!isset(self::$basePath)) {
 	 		$script = self::getScriptName();
 	 		self::$basePath = substr (
@@ -239,7 +246,7 @@ class Context {
 	  * The base url for the request.
 	  * @return string
 	  */
-	 public static function getBaseUrl() {
+	 public static function getBaseUrl(): string {
 	 	if(!isset(self::$baseUrl)) {
 	 	    self::$baseUrl =
 	 			self::getUrlBase().self::getBasePath();
@@ -247,14 +254,21 @@ class Context {
 	 	return self::$baseUrl;
 	 }
 
+    /**
+     * Returns the request body as a string
+     * @return false|string
+     */
+    public static function getBody() {
+        return file_get_contents('php://input');
+    }
 
-	/**
-      * Returns the requested command, or command property, based on the path parameters.
-      * @param string $property optional property name
-      * @param mixed $default optional default value for the supplied property name.
-      * @return mixed
-      */
-     public static function getCommand($property = null,$default = null) {
+    /**
+     * Returns the requested command, or command property, based on the path parameters.
+     * @param string|null $property optional property name
+     * @param mixed $default optional default value for the supplied property name.
+     * @return mixed
+     */
+     public static function getCommand(string $property = null, $default = null) {
          if(!isset(self::$command)) {
 
              // get the command map
@@ -267,7 +281,7 @@ class Context {
              } else if (array_key_exists ( null, $map )) {
                  $command = $map [null];
              } else {
-                 return;
+                 return null;
              }
 
              // set the command
@@ -287,11 +301,11 @@ class Context {
      }
 
 	/**
-	 * Return an array of default valuess for the command parameters.
+	 * Return an array of default values for the command parameters.
 	 * @return array
 	 */
-	public static function getCommandDefaults() {
-	    return self::$commandDefaults 
+	public static function getCommandDefaults(): array {
+	    return self::$commandDefaults
 	       ?? (self::$commandDefaults = array(
 	           'session' => true,
 	           'authenticate' => true,
@@ -300,9 +314,8 @@ class Context {
 	           'validate' => null,
 	           'post'=> null,
 	           'get' => null,
-	           'page' => null,
-	           'tab' => null,
-	           'tabgroup' => null));
+	           'page' => null
+	          ));
 	}
 
 	/**
@@ -310,7 +323,7 @@ class Context {
 	 * @param boolean $keep true to keep the loaded command map
 	 * @return array
 	 */
-	public static function getCommandMap($keep = false) {
+	public static function getCommandMap($keep = false): array {
 	    if(!isset(self::$commandMap)) {
 	        $filename = self::getMapDir().'/'. self::getScope().'.php';
 	        if (!($map = @include ($filename))) {
@@ -328,14 +341,14 @@ class Context {
 	    }
 		return $map;
 	}
-	
+
 	/**
 	 * Returns the path to a page file.
 	 *
 	 * @param string $name The name of the page
-	 * @return string the page file name
+	 * @return string|null the page file name
 	 */
-	public static function getCommandPage() {
+	public static function getCommandPage(): ?string {
 	    $name = static::getCommand('page');
 	    if($name) {
 	        return self::getPageDir()
@@ -346,13 +359,13 @@ class Context {
 	    }
 	    return null;
 	}
-	
+
 	/**
 	 * Returns the full path to an application script.
 	 * @param string $name The name of the command property
-	 * @return string the script file name
+	 * @return string|null the script file name
 	 */
-	public static function getCommandScript($name) {
+	public static function getCommandScript($name): ?string {
 	    $script = static::getCommand($name);
 	    if($script) {
 	        return static::getScriptDir()
@@ -369,8 +382,8 @@ class Context {
 	 * This is only set on POST requests.
 	 * @return string|null
 	 */
-	public static function getContentType() {
-		return isset($_SERVER['CONTENT_TYPE']) ? $_SERVER['CONTENT_TYPE'] : null;
+	public static function getContentType(): ?string {
+		return $_SERVER['CONTENT_TYPE'] ?? null;
 	}
 
 	/**
@@ -379,7 +392,7 @@ class Context {
 	 * @param mixed $default
 	 * @return mixed
 	 */
-	public static function getEnv($name,$default = null) {
+	public static function getEnv(string $name, $default = null) {
 	    if(isset($_ENV[$name])) {
             $value = trim($_ENV[$name]);
 
@@ -395,7 +408,7 @@ class Context {
 	               return '';
 	           case 'null':
 	           case '(null)':
-	               return;
+	               return null;
 	       }
 
 	       if (Str::startsWith($value, '"') && Str::endsWith($value, '"')) {
@@ -411,10 +424,10 @@ class Context {
 	/**
 	 * Return the named request header.
 	 * @param string $name
-	 * @param string $default
-	 * @return string
+	 * @param string|null $default
+	 * @return string|null
 	 */
-	public static function getHeader($name,$default=null) {
+	public static function getHeader(string $name, string $default=null): ?string {
 		$name = 'HTTP_'.strtoupper(str_replace('-','_',$name));
 		if(isset($_SERVER[$name])) {
 			return $_SERVER[$name];
@@ -424,10 +437,9 @@ class Context {
 
 	/**
 	 * Returns the host used for the request.
-	 * @todo Needs to safely handle X-Forwarded-Host
 	 * @return string
 	 */
-	public static function getHost() {
+	public static function getHost(): string {
 		if(!isset(self::$host)) {
 			if(self::$trust && isset($_SERVER['HTTP_X_FORWARDED_HOST'])) {
             	self::$host = $_SERVER['HTTP_X_FORWARDED_HOST'];
@@ -453,28 +465,11 @@ class Context {
 
 	/**
 	 * Returns the short unique id for this environment.
-	 * This should be explicitly set with an 'ID' environment variable, but
-	 * a unique value will be generated if necessary.
 	 *
 	 * @return string
 	 */
-	public static function getId() {
-        return isset(self::$id)
-            ? self::$id
-            : (self::$id = base_convert(crc32(self::getBaseDir()),16,32));
-	}
-
-	/**
-	 * Returns the short unique name for this environment.
-	 * This should be explicitly set, but a unique value 
-	 * will be generated if necessary.
-	 *
-	 * @return string
-	 */
-	public static function getName() {
-        return isset(self::$name)
-            ? self::$name
-            : (self::$name = base_convert(crc32(self::getBaseDir()),16,32));
+	public static function getId(): string {
+        return self::$id ?? (self::$id = base_convert(crc32(self::getBaseDir()), 16, 32));
 	}
 
 	/**
@@ -483,7 +478,7 @@ class Context {
 	 */
 	public static function getJson() {
 	    if(self::isJson()) {
-	        $content = json_decode(file_get_contents('php://input'),1);	        
+	        $content = json_decode(static::getBody(),1);
 	        if($content && is_array($content)) {
 	            return $content;
 	        }
@@ -496,9 +491,9 @@ class Context {
 	 * Returns the kiosk name passed through the url path parameters.
 	 * The kiosk name is a unique identifier for an account, but may
 	 * not be the actual number identifier for an account.
-	 * @return string
+	 * @return string|null
 	 */
-	public static function getKiosk() {
+	public static function getKiosk(): ?string {
 	    return self::getPathParams()['kiosk'];
 	}
 
@@ -508,7 +503,7 @@ class Context {
 	 *
 	 * @return string
 	 */
-	public static function getLogonUri() {
+	public static function getLogonUri(): string {
 	    return self::$logonUri;
 	}
 
@@ -519,17 +514,15 @@ class Context {
 	 *
 	 * @return string
 	 */
-	public static function getMapDir() {
-        return isset(self::$mapDir)
-            ? self::$mapDir
-            : (self::$mapDir = self::getBaseDir() . '/maps');
+	public static function getMapDir(): string {
+        return self::$mapDir ?? (self::$mapDir = self::getBaseDir() . '/maps');
 	}
 
 	/**
 	 * Return an array of messages that have been sent in this context
 	 * @return array
 	 */
-	public static function getMessages() {
+	public static function getMessages(): array {
 	    if(!isset(self::$messages)) {
 	        // get any messages stored in the session
 	        if(self::$messages = self::getAttribute(self::MESSAGES)) {
@@ -545,11 +538,9 @@ class Context {
 	 * Returns the HTTP method for the request.
 	 * @return string
 	 */
-	public static function getMethod() {
+	public static function getMethod(): ?string {
 	    if(!isset(self::$method)) {
-	        self::$method = isset($_SERVER['REQUEST_METHOD'])
-	           ? $_SERVER['REQUEST_METHOD']
-	           : null;
+	        self::$method = $_SERVER['REQUEST_METHOD'] ?? null;
 	    }
 	    return self::$method;
 	}
@@ -561,10 +552,8 @@ class Context {
 	 *
 	 * @return string
 	 */
-	public static function getPageDir() {
-        return isset(self::$pageDir)
-            ? self::$pageDir
-            : (self::$pageDir = self::getBaseDir() . '/pages');
+	public static function getPageDir(): string {
+        return self::$pageDir ?? (self::$pageDir = self::getBaseDir() . '/pages');
 	}
 
 	/**
@@ -573,7 +562,7 @@ class Context {
 	 * @param string $name The name of the page
 	 * @return string the page file name
 	 */
-	public static function getPagePath($name) {
+	public static function getPagePath(string $name) {
 	    return self::getPageDir()
 	        . '/'
 	        . self::getScope()
@@ -587,7 +576,7 @@ class Context {
 	 * @param mixed $default
 	 * @return mixed
 	 */
-	public static function getParameter($name,$default=null) {
+	public static function getParameter(string $name, $default=null) {
 	    if(isset($_REQUEST[$name])) {
 	       $value = $_REQUEST[$name];
 	       return Str::trimAll($value);
@@ -600,12 +589,10 @@ class Context {
 	 * Returns the HTTP method for the request.
 	 * @return string
 	 */
-	public static function getPath() {
-		return isset(self::$path)
-		    ? self::$path
-		    : (self::$path = substr(
-					parse_url($_SERVER['REQUEST_URI'],PHP_URL_PATH),
-					strlen(self::getBasePath())));
+	public static function getPath(): string {
+		return self::$path ?? (self::$path = substr(
+            parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH),
+            strlen(self::getBasePath())));
 	}
 
 	/**
@@ -613,11 +600,8 @@ class Context {
 	 * @return string[]
 	 */
 	public static function getPathParams() {
-        return isset(self::$pathParams)
-            ? self::$pathParams
-            : (self::$pathParams = self::parsePath(
-                self::getPath(),
-                self::getScopeList()));
+        return self::$pathParams ?? (self::$pathParams = self::parsePath(
+            self::getPath()));
 	}
 
 	/**
@@ -625,7 +609,7 @@ class Context {
 	 * @todo Need to safely handle X-Forwarded-Host header
 	 * @return int
 	 */
-	public static function getPort() {
+	public static function getPort(): int {
 	    if(!isset(self::$port)) {
 	        self::$port = isset($_SERVER['SERVER_PORT'])
 	        ? intval($_SERVER['SERVER_PORT'])
@@ -637,13 +621,11 @@ class Context {
 	/**
 	 * Return the remote ip address used for this request.
 	 * @todo Safely handle X-Forwarded-For header.
-	 * @return string
+	 * @return string|null
 	 */
-	public static function getRemoteAddr() {
+	public static function getRemoteAddr(): ?string {
 	    if(!isset(self::$remoteAddr)) {
-	        self::$remoteAddr = isset($_SERVER['REMOTE_ADDR'])
-	           ? $_SERVER['REMOTE_ADDR']
-	           : null;
+	        self::$remoteAddr = $_SERVER['REMOTE_ADDR'] ?? null;
 	    }
 	    return self::$remoteAddr;
 	}
@@ -651,9 +633,9 @@ class Context {
 	/**
 	 * Returns the scope of this context based on the url path parameters
 	 * ( /kiosk/scope/action.do ).
-	 * @return string
+	 * @return string|null
 	 */
-	public static function getScope() {
+	public static function getScope(): ?string {
 		return self::getPathParams()['scope'];
 	}
 
@@ -662,7 +644,7 @@ class Context {
 	 * This value *should be set with the SCOPE_LIST environment variable,
 	 * but a list be be generated from the file system if necessary.
 	 *
-	 * @var string
+	 * @return string
 	 */
 	public static function getScopeList() {
 		if(!isset(self::$scopeList)) {
@@ -673,7 +655,7 @@ class Context {
 		}
 		return self::$scopeList;
 	}
-	
+
 	/**
 	 * Returns the path to the scripts directory for this environment.
 	 * Defaults to /scripts under the base directory, but can be
@@ -681,10 +663,8 @@ class Context {
 	 *
 	 * @return string
 	 */
-	public static function getScriptDir() {
-	    return isset(self::$scriptDir)
-	       ? self::$scriptDir
-	       : (self::$scriptDir = self::getBaseDir() . '/scripts');
+	public static function getScriptDir(): string {
+	    return self::$scriptDir ?? (self::$scriptDir = self::getBaseDir() . '/scripts');
 	}
 
 
@@ -694,7 +674,7 @@ class Context {
 	* @param string $name The name of the script
 	* @return string the script file name
 	*/
-    public static function getScriptPath($name = null) {
+    public static function getScriptPath($name = null): string {
 	    return static::getScriptDir()
 	        .'/'
 	        . static::getScope()
@@ -704,10 +684,9 @@ class Context {
 
 	/**
 	 * Returns the request scheme used by the client.
-	 * @todo Needs to safely handle X-Forwarded-Proto
 	 * @return string
 	 */
-	public static function getScheme() {
+	public static function getScheme(): string {
 	    if(!isset(self::$scheme)) {
 			if(self::$trust && isset($_SERVER['HTTP_X_FORWARDED_PROTO'])) {
 				self::$scheme = $_SERVER['HTTP_X_FORWARDED_PROTO'];
@@ -725,7 +704,7 @@ class Context {
 	/**
 	 * Returns the pathname of the currently executing script.
 	 */
-	public static function getScriptName() {
+	public static function getScriptName(): string {
         if(!isset(self::$scriptName)) {
             // check for built in php server
             if (php_sapi_name() == 'cli-server') {
@@ -740,10 +719,6 @@ class Context {
                 } else {
                     self::$scriptName = $_SERVER['PHP_SELF'];
                 }
-                // should be a relative path
-                //if(self::$lazyScriptName[0] = '/') {
-                //    self::$lazyScriptName = substr(self::$lazyScriptName,1);
-                //}
             }
         }
         return self::$scriptName;
@@ -752,29 +727,37 @@ class Context {
 	/**
 	 * Returns the session id.
 	 * Returns null when there is no session, unlike session_id()
-	 * which return an empty string.
+	 * which returns an empty string.
 	 */
-	public static function getSessionId() {
+	public static function getSessionId(): ?string {
 		if(empty($id = session_id())) {
 			return null;
 		}
 		return $id;
-		
 	}
 
 	/**
 	 * Returns the current response status code
 	 * @return int
 	 */
-	public static function getStatus() {
+	public static function getStatus(): int {
 		return http_response_code();
 	}
+
+    /**
+     * Returns the CRSF token for this session
+     * @return string
+     * @throws RandomException
+     */
+    public static function getToken(): string {
+        return $_SESSION['crsf'] ?? ($_SESSION['crsf'] = bin2hex(random_bytes(32)));
+    }
 
 	/**
 	  * The url for the request.
 	  * @return string
 	  */
-	  public static function getUrl() {
+	  public static function getUrl(): string {
 		if(!isset(self::$url)) {
 			self::$url = self::getUrlBase();
 			if(isset($_SERVER['REQUEST_URI'])) {
@@ -788,8 +771,8 @@ class Context {
 	  * Returns the url base for getBaseUrl and getUrl.
 	  * @return string
 	  */
-	  private static function getUrlBase() {
-		if(!isset(self::$usrBbase)) {
+	  private static function getUrlBase(): string {
+		if(!isset(self::$urlBase)) {
 			self::$urlBase =
 				self::getScheme()
 				. '://'
@@ -801,13 +784,13 @@ class Context {
 		}
 		return self::$urlBase;
 	}
-	
+
 	/**
 	 * Return if the named value exists
 	 * @param string $name
 	 * @return boolean
 	 */
-	public static function has($name) {
+	public static function has($name): bool {
 		return isset(self::$state['$name']);
 	}
 
@@ -815,16 +798,16 @@ class Context {
 	 * Returns true if an error message is present.
 	 * @return boolean
 	 */
-	public static function hasError() {
+	public static function hasError(): bool {
 		return self::$hasError;
 	}
-	
+
 	/**
 	 * Returns true if there are session attributes.
 	 * A session will NOT be automatically created.
 	 * @return boolean
 	 */
-	public static function hasAttributes() {
+	public static function hasAttributes(): bool {
 	    return (!empty($_SESSION));
 	}
 
@@ -832,21 +815,21 @@ class Context {
 	 * Returns true if there are messages
 	 * @return boolean
 	 */
-	public static function hasMessages() {
+	public static function hasMessages(): bool {
 	    return (!empty(self::$messages));
 	}
-	
+
 	/**
 	 * Returns true if there is session
 	 * @return boolean
 	 */
-	public static function hasSession() {
+	public static function hasSession(): bool {
 	    if (session_status() == PHP_SESSION_ACTIVE) {
 	       return true;
 	    }
 	    return false;
 	}
-	
+
 	/**
 	 * Returns a url for based on the current context.
 	 * Parameters for baseUrl, kiosk, scope, action will
@@ -856,10 +839,10 @@ class Context {
 	 * @param array $parameters
 	 * @return string
 	 */
-	public static function href($parameters) {
-	    
+	public static function href($parameters): string {
+
 	    $url='';
-	    
+
 	    // set the base url
 	    if(isset($parameters['baseUrl'])) {
 	        $url .= $parameters['baseUrl'];
@@ -867,7 +850,7 @@ class Context {
 	    } else {
 	        $url .= self::getBaseUrl();
 	    }
-	    
+
 	    // set the kiosk
 	    if(isset($parameters['kiosk'])) {
 	        $kiosk =  $parameters['kiosk'];
@@ -878,7 +861,7 @@ class Context {
 	    if(!empty($kiosk)) {
 	        $url .= '/'.$kiosk;
 	    }
-	    
+
 	    // set the scope
 	    if(isset($parameters['scope'])) {
 	        $url .= '/'.$parameters['scope'];
@@ -886,18 +869,18 @@ class Context {
 	    } else {
 	        $url .= '/'.self::getScope();
 	    }
-	    
+
 	    if(isset($parameters['action'])) {
 	        $url .= '/'. $parameters['action'].'.do';
 	        unset($parameters['action']);
 	    } else {
 	        $url .= '/'. self::getAction().'.do';
 	    }
-	    
+
 	    if(count($parameters)) {
 	        $url .= '?'.http_build_query($parameters);
 	    }
-	    
+
 	    return $url;
 	}
 
@@ -911,7 +894,7 @@ class Context {
 	        }
 	    }
 	}
-	
+
 	/**
 	 * Invalidate the session for this context.
 	 */
@@ -939,7 +922,7 @@ class Context {
 	 * Return true if the content type is application/json
 	 * @return boolean
 	 */
-	public static function isJson() {
+	public static function isJson(): bool {
 	    if(Str::endsWith(self::getContentType(),'json')) {
 	        return true;
 	    }
@@ -950,7 +933,7 @@ class Context {
 	 * Returns true if the command is being redirected.
 	 * @return boolean
 	 */
-	public static function isRedirect() {
+	public static function isRedirect(): bool {
 	    return in_array(self::getStatus(),[301,302,303,307,308]);
 	}
 
@@ -958,7 +941,7 @@ class Context {
 	 * Return true if there is a HTTP request and false if CLI.
 	 * @return boolean
 	 */
-	public static function isRequest() {
+	public static function isRequest(): bool {
 	    return http_response_code()!==FALSE;
 	}
 
@@ -966,16 +949,16 @@ class Context {
 	 * Return true if the command request is a
 	 * @return boolean
 	 */
-	public static function isPost() {
-		return ('POST' === self::getMethod() ? true : false);
+	public static function isPost(): bool {
+		return 'POST' === self::getMethod();
 	}
-	
+
 	/**
 	 * Returns true if the response status code is still < 300.
-	 * @param int $accept additional valid status codes as parameters
+	 * @param int|null $accept additional valid status codes as parameters
 	 * @return boolean
 	 */
-	public static function isStatusOk($accept = null) {
+	public static function isStatusOk(int $accept = null): bool {
 	    // check for a code less than 300
 	    if($status = self::getStatus() < 300) {
 	        return true;
@@ -1007,7 +990,7 @@ class Context {
 	 * @param string $path The path to parse
 	 * @return array
 	 */
-	public static function parsePath($path) {
+	public static function parsePath($path): array {
 		// create a path params object
 		$params = ['kiosk'=>null,'scope'=>null,'action'=>null];
 
@@ -1048,12 +1031,12 @@ class Context {
 
 		return $params;
 	}
-	
+
 	/**
 	 * Render the specified page for the current scope
 	 * @param string $page
 	 */
-	public static function render($page) {
+	public static function render(string $page) {
 	    if(isset(self::$state)) {
 	        extract(self::$state,EXTR_SKIP);
 	    }
@@ -1061,7 +1044,7 @@ class Context {
 	}
 
 	/**
-	 * Reset all of the properties for this context.
+	 * Reset all the properties for this context.
 	 */
 	public static function reset() {
 	    self::$hasError = false;
@@ -1106,9 +1089,9 @@ class Context {
 	 * Send a message to be displayed on the user page.
 	 * @param string $message the message to send.
 	 * @param int $type the message type
-	 * @param string $field the name of the input field in error
+	 * @param string|null $field the name of the input field in error
 	 */
-	public static function sendMessage($message, $type = 0, $field = null) {
+	public static function sendMessage(string $message, int $type = 0, string $field = null) {
         if(E_USER_ERROR == $type) {
             self::$hasError = true;
         }
@@ -1125,7 +1108,7 @@ class Context {
 	 * @param int $status
 	 * @return boolean
 	 */
-	public static function sendRedirect($to,$status = null) {
+	public static function sendRedirect($to,$status = null): bool {
 
 	    // make sure headers are not already sent
 	    if (headers_sent()) {
@@ -1133,7 +1116,7 @@ class Context {
 	    }
 
 	    // save messages to the session
-	    if(self::hasMessages() && self::hasAttributes()) {
+	    if(self::hasMessages() && self::hasSession()) {
 	        self::setAttribute(self::MESSAGES, self::getMessages());
 	    }
 
@@ -1159,9 +1142,9 @@ class Context {
 	/**
 	 * Send the status to the client.
 	 * @param int $status_code
-	 * @param string $message The message to be sent with the status code.
+	 * @param string|null $message The message to be sent with the status code.
 	 */
-	public static function sendError($status_code,$message=null) {
+	public static function sendError(int $status_code, string $message=null) {
 		http_response_code($status_code);
 		echo $message;
 	}
@@ -1172,7 +1155,7 @@ class Context {
 	 * @param mixed $value
 	 * @return mixed
 	 */
-	public static function set($name,$value) {
+	public static function set(string $name, $value) {
 		return (self::$state[$name] = $value);
 	}
 
@@ -1181,7 +1164,7 @@ class Context {
 	 * @param string $name
 	 * @param mixed $value
 	 */
-	public static function setAttribute($name,$value) {
+	public static function setAttribute(string $name, $value) {
 	    if($value === null) {
 	        unset($_SESSION[$name]);
 	        return null;
@@ -1193,7 +1176,7 @@ class Context {
 	 * Set the base directory for the application.
 	 * @param string $dir
 	 */
-	public static function setBaseDir($dir) {
+	public static function setBaseDir(string $dir) {
 	    if(self::$baseDir != $dir) {
 	       self::$baseDir = $dir;
 	       // reset the map and script directories
@@ -1203,12 +1186,12 @@ class Context {
 	    }
 	    return $dir;
 	}
-	
+
 	/**
 	 * Set the base url so that it doesn't need to be calculated
 	 * @param string $url
 	 */
-	public static function setBaseUrl($url) {
+	public static function setBaseUrl(string $url) {
 	    if($parts = parse_url($url)) {
 	        if(isset($parts['scheme'])) self::$scheme = $parts['scheme'];
 	        if(isset($parts['host'])) self::$host = $parts['host'];
@@ -1216,7 +1199,7 @@ class Context {
 	        if(isset($parts['path'])) self::$basePath = $parts['path'];
 	    }
 	}
-	
+
 	/**
 	 * Override the default command defaults
 	 * @param array|string|object $defaults
@@ -1226,17 +1209,17 @@ class Context {
 	        $defaults = json_decode($defaults,1);
 	    } else if(is_object($defaults)) {
 	        $defaults = (array)$defaults;
-	    } 
+	    }
 	    if(is_array($defaults)) {
 	        self::$commandDefaults = $defaults;
 	    }
 	}
 
-		/**
+    /**
 	 * Set the unique short id for the application.
 	 * @param string $id
 	 */
-	public static function setId($id) {
+	public static function setId(string $id) {
 	    if(!isset(self::$id)) {
 	        self::$id = $id;
 	    } else if(self::$id != $id) {
@@ -1249,7 +1232,7 @@ class Context {
 	 * @param string $dir
 	 * @return string
 	 */
-	public static function setMapDir($dir) {
+	public static function setMapDir(string $dir): string {
 	    return (self::$mapDir = $dir);
 	}
 
@@ -1258,7 +1241,7 @@ class Context {
 	 * @param string $dir
 	 * @return string
 	 */
-	public static function setPageDir($dir) {
+	public static function setPageDir($dir): string {
 	    return (self::$pageDir = $dir);
 	}
 
@@ -1268,7 +1251,7 @@ class Context {
 	 * @param string $name
 	 * @param mixed $value
 	 */
-	public static function setParameter($name,$value) {
+	public static function setParameter(string $name, $value) {
 	    if($value === null) {
 	        unset($_REQUEST[$name]);
 	        return null;
@@ -1281,7 +1264,7 @@ class Context {
 	 * @param string $list
 	 * @return string
 	 */
-	public static function setScopeList($list) {
+	public static function setScopeList($list): string {
 	    return (self::$scopeList = str_replace(' ','',$list));
 	}
 
@@ -1290,23 +1273,23 @@ class Context {
 	 * @param string $dir
 	 * @return string
 	 */
-	public static function setScriptDir($dir) {
+	public static function setScriptDir(string $dir): string {
 	    return (self::$scriptDir = $dir);
 	}
-	
+
 	/**
 	 * Set trust proxy to true if we trust the proxy headers
 	 * @param boolean $isTrusted
 	 */
-	public static function setTrustProxy($isTrusted = true) {
-	    self::$trust = $isTrusted ? true : false;
+	public static function setTrustProxy(bool $isTrusted = true) {
+	    self::$trust = (bool)$isTrusted;
 	}
 
 	/**
 	 * Start a session to store persistent attributes
 	 * @return boolean
 	 */
-	public static function start() {
+	public static function start(): bool {
 	    if(self::isRequest()
 	        && (PHP_SESSION_ACTIVE == ($status = session_status())
 	            || (PHP_SESSION_NONE == $status && session_start()))) {
@@ -1324,7 +1307,7 @@ class Context {
 	 * Return the context properties as an array.
 	 * @return array
 	 */
-	public static function toArray() {
+	public static function toArray(): array {
 	    return [
 	        'action' => self::getAction(),
 	        'baseDir' => self::getBaseDir(),
@@ -1356,7 +1339,7 @@ class Context {
 	        'scriptName' => self::getScriptName()
 	    ];
 	}
-	
+
 	/**
 	 * Set this context to use $GLOBALS for managing state rather than
 	 * an internal array.
@@ -1373,5 +1356,5 @@ class Context {
 	    // set the state variable to reference $GLOBALS
 	    self::$state = &$GLOBALS;
 	}
-	
+
 }
