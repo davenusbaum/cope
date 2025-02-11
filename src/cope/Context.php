@@ -23,7 +23,7 @@ class Context {
     const WARNING = 2;
     const ERROR = 3;
 
-    /** @var string The base directory */
+    /** @var string|null The base directory */
     private static $baseDir;
 
     /** @var string The base path for the application url. */
@@ -44,7 +44,7 @@ class Context {
 	/** @var array The default command properties */
 	private static $commandDefaults;
 
-	/** @var array The command map for the current request. */
+	/** @var array|null The command map for the current request. */
 	private static $commandMap;
 
 	/** @var string The host for the current request. */
@@ -68,7 +68,7 @@ class Context {
 	/** @var string The full path to the page directory. */
 	private static $pageDir;
 
-    /** @var array|null Input parameters  */
+    /** @var Parameters|null Input parameters  */
     private static $parameters = null;
 
 	/** @var string The url path after the base path. */
@@ -86,7 +86,7 @@ class Context {
 	/** @var string The scheme used for the request. */
 	private static $scheme;
 
-	/** @var array The list of possible scope values */
+	/** @var string The `|` separated list of possible scope values */
 	private static $scopeList;
 
 	/** @var string The full path the script directory. */
@@ -94,6 +94,9 @@ class Context {
 
 	/** @var string The full name of the base script for this request. */
 	private static $scriptName;
+
+    /** @var Session|null The session associated with this request */
+    private static $session = null;
 
 	/** @var array Response variables for the current request. */
 	protected static $state;
@@ -108,6 +111,15 @@ class Context {
 
 	/** @var string All the stuff the comes before the path */
 	private static $urlBase;
+
+    /**
+     * Can be set to an alternative $_REQUEST variable for testing purposes
+     * @var array|null
+     */
+    private static $_request = null;
+
+    /** @var Server Object wrapper around the _SERVER array */
+    private static $_server;
 
 	/**
 	 * Returns an url for the specified action, scope and kiosk.
@@ -170,15 +182,6 @@ class Context {
     }
 
 	/**
-	 * Clear the current context.
-	 */
-	public static function clear() {
-	    if(session_status() === PHP_SESSION_ACTIVE) {
-	        session_unset();
-	    }
-	}
-
-	/**
 	 * Get a global value.
 	 * @param string $name
 	 * @param mixed $default
@@ -204,13 +207,7 @@ class Context {
 	 * @return mixed
 	 */
 	public static function getAttribute(string $name, $default=null) {
-	    if(!isset($_SESSION)) {
-	        self::start();
-	    }
-	    if(isset($_SESSION[$name])) {
-	        return $_SESSION[$name];
-	    }
-	    return $default;
+        return self::getSession()->getAttribute($name, $default);
 	}
 
 	/**
@@ -347,8 +344,6 @@ class Context {
 
 	/**
 	 * Returns the path to a page file.
-	 *
-	 * @param string $name The name of the page
 	 * @return string|null the page file name
 	 */
 	public static function getCommandPage(): ?string {
@@ -423,7 +418,6 @@ class Context {
 	    return $default;
 	}
 
-
 	/**
 	 * Return the named request header.
 	 * @param string $name
@@ -431,11 +425,7 @@ class Context {
 	 * @return string|null
 	 */
 	public static function getHeader(string $name, string $default=null): ?string {
-		$name = 'HTTP_'.strtoupper(str_replace('-','_',$name));
-		if(isset($_SERVER[$name])) {
-			return $_SERVER[$name];
-		}
-		return $default;
+		return self::getServer()->getHeader($name, $default);
 	}
 
 	/**
@@ -444,13 +434,9 @@ class Context {
 	 */
 	public static function getHost(): string {
 		if(!isset(self::$host)) {
-			if(self::$trust && isset($_SERVER['HTTP_X_FORWARDED_HOST'])) {
-            	self::$host = $_SERVER['HTTP_X_FORWARDED_HOST'];
-        	} else if(isset($_SERVER['HTTP_HOST'])) {
-            	self::$host = $_SERVER['HTTP_HOST'];
-        	} else if(isset($_SERVER['SERVER_NAME'])) {
-            	self::$host = $_SERVER['SERVER_NAME'];
-        	}
+            self::$host = ((self::$trust && ($host = self::getHeader('X_FORWARDED_HOST'))) ? $host : null)
+                ?? self::getHeader('HOST')
+                ?? self::getServer()->get('SERVER_NAME');
 	    }
 	    return self::$host;
 	}
@@ -542,7 +528,7 @@ class Context {
 	 */
 	public static function getMethod(): ?string {
 	    if(!isset(self::$method)) {
-	        self::$method = $_SERVER['REQUEST_METHOD'] ?? null;
+	        self::$method = self::getServer()->get('REQUEST_METHOD');
 	    }
 	    return self::$method;
 	}
@@ -582,14 +568,23 @@ class Context {
         return self::getParameters()->get($name, $default);
 	}
 
-    public static function getParameters(): Parameters {
+    public static function getParameters(): ArrayMap {
         if (!isset(self::$parameters)) {
-            self::importJson();
-            self::$parameters = new Parameters(null, $_REQUEST);
+            if (isset(self::$_request)) {
+                self::$parameters = new Parameters(self::$_request);
+                self::$_request = null;
+            } else {
+                self::$parameters = new Parameters($_REQUEST);
+            }
+            if(self::isJson()) {
+                $content = json_decode(static::getBody(),1);
+                if($content && is_array($content)) {
+                    self::$parameters->addAll($content);
+                }
+            }
         }
         return self::$parameters;
     }
-
 
 	/**
 	 * Returns the HTTP method for the request.
@@ -597,7 +592,7 @@ class Context {
 	 */
 	public static function getPath(): string {
 		return self::$path ?? (self::$path = substr(
-            parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH),
+            parse_url(self::getServer()->get('REQUEST_URI'), PHP_URL_PATH),
             strlen(self::getBasePath())));
 	}
 
@@ -730,17 +725,16 @@ class Context {
         return self::$scriptName;
 	}
 
-	/**
-	 * Returns the session id.
-	 * Returns null when there is no session, unlike session_id()
-	 * which returns an empty string.
-	 */
-	public static function getSessionId(): ?string {
-		if(empty($id = session_id())) {
-			return null;
-		}
-		return $id;
-	}
+    public static function getServer(): Server {
+        return self::$_server ?? (self::$_server = new Server($_SERVER));
+    }
+
+    public static function getSession($create = true): ?Session {
+        if (!isset(self::$session) && $create) {
+            self::$session = new Session();
+        }
+        return self::$session;
+    }
 
 	/**
 	 * Returns the current response status code
@@ -907,20 +901,6 @@ class Context {
 	}
 
 	/**
-	 * Invalidate the session for this context.
-	 */
-	public static function invalidate() {
-	    //remove session cookie from browser
-	    if ( isset( $_COOKIE[session_name()] ) ) {
-	        setcookie( session_name(), "", time()-3600, "/" );
-	    }
-	    //clear session
-	    self::clear();
-	    //clear session from disk
-	    session_destroy();
-	}
-
-	/**
 	 * Return true if the content type is application/json
 	 * @return boolean
 	 */
@@ -1024,7 +1004,7 @@ class Context {
 		// if we have kiosk and no scope, set the default scope
 		$kiosk_scope = null;
 		if(count($parts) == 0) {
-			if(isset($kiosk_scope) && isset($params['kiosk']) && !isset($params['scope'])) {
+			if(isset($params['kiosk']) && !isset($params['scope'])) {
 				$params['scope'] = end($scope);
 			} else if(!isset($params['scope'])) {
 				$params['scope'] = reset ($scope);
@@ -1064,14 +1044,17 @@ class Context {
 	    self::$mapDir = null;
 	    self::$method = null;
 	    self::$pageDir = null;
+        self::$parameters = null;
 	    self::$path = null;
 	    self::$pathParams = null;
 	    self::$port = null;
 	    self::$remoteAddr = null;
+        self::$_request = null;
 	    self::$scheme = null;
 	    self::$scopeList = null;
 	    self::$scriptDir = null;
 	    self::$scriptName = null;
+        self::$_server = null;
 		self::$timestamp = null;
 	    self::$state = null;
 		self::$trust = false;
@@ -1266,6 +1249,19 @@ class Context {
 		return ($_REQUEST[$name] = $value);
 	}
 
+    /**
+     * Set the underlying _REQUEST array
+     *
+     * This only needs to be done for testing purposes as $_REQUEST
+     * is loaded by default.
+     *
+     * @param array $_request
+     * @return void
+     */
+    public static function setRequest(array $_request) {
+        self::$_request = $_request;
+    }
+
 	/**
 	 * Set the valid scope names as a '|' separated list of values.
 	 * @param string $list
@@ -1284,30 +1280,27 @@ class Context {
 	    return (self::$scriptDir = $dir);
 	}
 
+    /**
+     * Set the underlying _SERVER array.
+     *
+     * This only needs to be done for testing purposes, $_SERVER is
+     * loaded by default.
+     *
+     * @param array $_server
+     * @return void
+     */
+    public static function setServer(array $_server) {
+        if (!isset(self::$_server)) {
+            self::$_server = new Server($_server);
+        }
+    }
+
 	/**
 	 * Set trust proxy to true if we trust the proxy headers
 	 * @param boolean $isTrusted
 	 */
 	public static function setTrustProxy(bool $isTrusted = true) {
 	    self::$trust = $isTrusted;
-	}
-
-	/**
-	 * Start a session to store persistent attributes
-	 * @return boolean
-	 */
-	public static function start(): bool {
-	    if(self::isRequest()
-	        && (PHP_SESSION_ACTIVE == ($status = session_status())
-	            || (PHP_SESSION_NONE == $status && session_start()))) {
-	        return true;
-	    } else {
-	        if(!isset($_SESSION)) {
-	            // create a dummy session array
-	            $_SESSION = array();
-	        }
-	       return false;
-	    }
 	}
 
 	/**
@@ -1335,6 +1328,7 @@ class Context {
 	        'method' => self::getMethod(),
 	        'messages' => self::getMessages(),
 	        'pageDir' => self::getPageDir(),
+            'parameters' => self::getParameters(),
 	        'path' => self::getPath(),
 	        'pathParams' => self::getPathParams(),
 	        'port' => self::getPort(),
@@ -1345,22 +1339,5 @@ class Context {
 	        'scheme' => self::getScheme(),
 	        'scriptName' => self::getScriptName()
 	    ];
-	}
-
-	/**
-	 * Set this context to use $GLOBALS for managing state rather than
-	 * an internal array.
-	 */
-	public static function useGlobalState() {
-	    // copy existing state to globals if necessary
-	    if(isset(self::$state) && self::$state !== $GLOBALS) {
-	        foreach (self::$state as $name => $value) {
-	            if(!isset($GLOBALS[$name])) {
-	                $GLOBALS[$name] = $value;
-	            }
-	        }
-	    }
-	    // set the state variable to reference $GLOBALS
-	    self::$state = &$GLOBALS;
 	}
 }

@@ -4,6 +4,7 @@ namespace Cope;
 
 /**
  * Data structure describing a web command in the cope framework.
+ * @phpstan-consistent-constructor
  */
 class Command {
 	
@@ -33,6 +34,9 @@ class Command {
 	
 	/** @var boolean Set to true (default) if a session is required  */
 	public $session = true;
+
+    public function __construct() {
+    }
 	
 	/**
 	 * Create a new Command and initialize with an array
@@ -68,10 +72,10 @@ class Command {
 	/**
 	 * Set the name of the script to handle authorization of requests
 	 * for this Command.
-	 * @param string script_name
+	 * @param string $script_name
 	 * @return Command
 	 */
-	public function setAuthorize($script_name) {
+	public function setAuthorize(string $script_name) {
 		$this->authorize = $script_name;
 		return $this;
 	}
@@ -110,10 +114,10 @@ class Command {
 	
 	/**
 	 * Set the name of the script validate POST requests.
-	 * @param string script_name
+	 * @param string $script_name
 	 * @return Command
 	 */
-	public function setValidate($script_name) {
+	public function setValidate(string $script_name) {
 		$this->validate = $script_name;
 		return $this;
 	}

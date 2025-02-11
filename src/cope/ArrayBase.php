@@ -3,14 +3,27 @@
 namespace Cope;
 
 use ArrayAccess;
+use Countable;
 use Iterator;
 
 /**
- * Abstract class that provides a basic object wrapper for an array
+ * Base class to support common elements of ArrayMap and ArrayList
  */
-abstract class AbstractArray implements ArrayAccess, Iterator
+class ArrayBase implements ArrayAccess, Iterator, Countable
 {
-    protected $array;
+    protected array $array;
+
+    /**
+     * Create a new array object
+     * @param array|null $array optional array passed by value
+     */
+    public function __construct(?array $array = null) {
+        if (isset($array)) {
+            $this->array = $array;
+        } else {
+            $this->array = array();
+        }
+    }
 
     /**
      * Returns the number of elements in the underlying array
@@ -30,7 +43,7 @@ abstract class AbstractArray implements ArrayAccess, Iterator
 
     /**
      * Return the key of the current element
-     * @return int|string|null
+     * @return mixed
      */
     public function key() {
         return key($this->array);
@@ -90,14 +103,6 @@ abstract class AbstractArray implements ArrayAccess, Iterator
      */
     public function rewind(): void {
         reset($this->array);
-    }
-
-    /**
-     * Returns the collection as an array
-     * @return array
-     */
-    public function toArray(): array {
-        return $this->array;
     }
 
     /**

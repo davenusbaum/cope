@@ -47,10 +47,10 @@ class StringHelper {
      * Return true if haystack begins with needle.
      * @param string $haystack
      * @param string $needle
-     * @param boolean $case_insensistive
-     * @return boolean
+     * @param bool $case_insensitive
+     * @return bool
      */
-    public static function startsWith($haystack, $needle, $case_insensitive = false) {
+    public static function startsWith(string $haystack, string $needle, bool $case_insensitive = false): bool {
         $length = strlen($needle);
         return (0 === substr_compare($haystack, $needle, 0, $length, $case_insensitive));
     }
