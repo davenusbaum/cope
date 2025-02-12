@@ -31,12 +31,12 @@ class StringHelper {
     
     /**
      * Return true if haystack ends with needle.
-     * @param string $haystack
-     * @param string $needle
+     * @param string|null $haystack
+     * @param string|null $needle
      * @param boolean $ci true for case insensitive comparison
      * @return boolean
      */
-    public static function endsWith($haystack, $needle, $ci = false) {
+    public static function endsWith(?string $haystack, ?string $needle, $ci = false): bool {
         if(null === $haystack && null === $needle) return true;
         if(null === $haystack) return false;
         if(null === $needle || 0 === ($len = strlen($needle))) return true;

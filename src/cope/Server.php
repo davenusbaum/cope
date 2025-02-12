@@ -4,7 +4,7 @@ namespace Cope;
 
 class Server extends ArrayMap
 {
-    public function __construct(array $server = null) {
+    public function __construct(?array $server = null) {
         parent::__construct(
             array_replace(
                 [
@@ -22,7 +22,7 @@ class Server extends ArrayMap
                     'REQUEST_TIME' => time(),
                     'REQUEST_TIME_FLOAT' => microtime(true),
                 ],
-                    $server ?? $_SERVER
+                ($server ?? $_SERVER)
             )
         );
     }

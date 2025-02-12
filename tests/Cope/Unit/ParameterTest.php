@@ -4,13 +4,13 @@ use Cope\Context as ctx;
 class ParameterTest extends \PHPUnit\Framework\TestCase
 {
     public function testEmptyString(): void {
-        ctx::reset();
+        ctx::_reset();
         $test = ctx::getParameters()->get('test');
         $this->assertEquals(null, $test);
     }
     public function testHtmlString(): void {
-        ctx::reset();
-        ctx::setRequest([
+        ctx::_reset();
+        ctx::_request([
             'test' => '<b>Bob</b>',
             'simple' => 'Just a simple string',
             'XSS1' => 'xssbys3c%22%3E%3Cscript%3Ealert(2)%3C/script%3E',
