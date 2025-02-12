@@ -11,7 +11,7 @@ use Iterator;
  */
 class ArrayBase implements ArrayAccess, Iterator, Countable
 {
-    protected array $array;
+    protected $array;
 
     /**
      * Create a new array object

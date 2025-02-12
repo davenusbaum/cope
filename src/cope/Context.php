@@ -996,13 +996,12 @@ class Context {
 			$params['scope'] = array_pop ( $parts );
 		}
 
-		// check for kiosk
+		// check for kiosk (kiosk cannot be empty)
 		if (count ( $parts ) == 1) {
-			$params['kiosk'] = array_pop ( $parts );
+			$params['kiosk'] = trim(array_pop ( $parts )) ?: null;
 		}
 
 		// if we have kiosk and no scope, set the default scope
-		$kiosk_scope = null;
 		if(count($parts) == 0) {
 			if(isset($params['kiosk']) && !isset($params['scope'])) {
 				$params['scope'] = end($scope);
