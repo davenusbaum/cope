@@ -71,6 +71,9 @@ class Context {
     /** @var Parameters|null */
     private static $parameters;
 
+    /** @var bool True is path is parse with kiosk before scope */
+    private static $parseKioskFirst = false;
+
 	/** @var string|null The url path after the base path. */
 	private static $path;
 
@@ -602,7 +605,7 @@ class Context {
 	 */
 	public static function getPathParams(): array {
         return self::$pathParams ?? (self::$pathParams = self::parsePath(
-            self::getPath()));
+            self::getPath(), self::$parseKioskFirst));
 	}
 
 	/**
@@ -955,19 +958,23 @@ class Context {
 	/**
 	 * Returns the application parameters parsed from the supplied path.
 	 * A parameters are parsed based on the following pattern:
+     *
+     * > '<scope>/<kiosk>/<action>/.do
 	 *
+     * unless $kiosk_scope is true and then the path as parsed as
+     *
 	 * > `<kiosk>/<scope>/<action>.do`
 	 *
 	 * **kiosk** represent the unique entry point for a client/account.
 	 *
 	 * **scope** represents the request scope, or sub-application
 	 *
-	 * **action** represent the command to be executed
+	 * **action** represents the command to be executed
      *
 	 * @param string $path The path to parse
 	 * @return array
 	 */
-	public static function parsePath(string $path): array {
+	public static function parsePath(string $path, $kiosk_scope = false): array {
 		// create a path params object
 		$params = ['kiosk'=>null,'scope'=>null,'action'=>null];
 
@@ -978,23 +985,29 @@ class Context {
 
 		// check for .do parameter
 		if (count ( $parts ) > 0
-				&& strlen ( ($s = end ( $parts )) ) > 3
+				&& strlen ( ($s = end( $parts )) ) > 3
 				&& substr_compare ( $s, '.do', - 3 ) == 0)
 		{
 			$params['action'] = substr ( array_pop ( $parts ), 0, - 3 );
 		}
 
-		// check for scope parameter
-		if (count( $parts ) > 0 && in_array( (end($parts)), $scope )) {
-			$params['scope'] = array_pop ( $parts );
-		}
+        // check for scope parameter
+        if ($kiosk_scope) {
+            if (count($parts) > 0 && in_array((end($parts)), $scope)) {
+                $params['scope'] = array_pop($parts);
+            }
+        } else {
+            if (count($parts) > 0 && in_array((reset($parts)), $scope)) {
+                $params['scope'] = array_shift($parts);
+            }
+        }
 
 		// check for kiosk (kiosk cannot be empty)
 		if (count ( $parts ) == 1) {
 			$params['kiosk'] = trim(array_pop ( $parts )) ?: null;
 		}
 
-		// if we have kiosk and no scope, set the default scope
+		// set the default scope
 		if(count($parts) == 0) {
 			if(isset($params['kiosk']) && !isset($params['scope'])) {
 				$params['scope'] = end($scope);
@@ -1168,6 +1181,16 @@ class Context {
 	        trigger_error('The context id cannot be reset',E_USER_WARNING);
 	    }
 	}
+
+    /**
+     * Parse the path with kiosk first followed by scope.
+     * This was the original, but not the best, approach.
+     * @param bool $parse_kiosk_first
+     * @return void
+     */
+    public static function setKioskFirst(bool $parse_kiosk_first = true) {
+        self::$parseKioskFirst = $parse_kiosk_first;
+    }
 
 	/**
 	 * Set the map directory for the application.
