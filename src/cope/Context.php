@@ -142,16 +142,17 @@ class Context {
 	        $url .= self::getBaseUrl();
 	    }
 
-	    // set the kiosk
-	    if(isset($parameters['kiosk'])) {
-	        $kiosk =  $parameters['kiosk'];
-	        unset($parameters['kiosk']);
-	    } else {
-	        $kiosk = self::getKiosk();
-	    }
-	    if(!empty($kiosk)) {
-	        $url .= '/'.$kiosk;
-	    }
+	    if (self::$parseKioskFirst) {
+            if (isset($parameters['kiosk'])) {
+                $kiosk = $parameters['kiosk'];
+                unset($parameters['kiosk']);
+            } else {
+                $kiosk = self::getKiosk();
+            }
+            if (!empty($kiosk)) {
+                $url .= '/' . $kiosk;
+            }
+        }
 
 	    // set the scope
 	    if(isset($parameters['scope'])) {
@@ -160,6 +161,18 @@ class Context {
 	    } else {
 	        $url .= '/'.self::getScope();
 	    }
+
+        if (!self::$parseKioskFirst) {
+            if (isset($parameters['kiosk'])) {
+                $kiosk = $parameters['kiosk'];
+                unset($parameters['kiosk']);
+            } else {
+                $kiosk = self::getKiosk();
+            }
+            if (!empty($kiosk)) {
+                $url .= '/' . $kiosk;
+            }
+        }
 
 	    if(isset($parameters['action'])) {
 	        $url .= '/'. $parameters['action'].'.do';
@@ -840,49 +853,8 @@ class Context {
 	 * @return string
 	 */
 	public static function href(array $parameters): string {
-
-	    $url='';
-
-	    // set the base url
-	    if(isset($parameters['baseUrl'])) {
-	        $url .= $parameters['baseUrl'];
-	        unset($parameters['baseUrl']);
-	    } else {
-	        $url .= self::getBaseUrl();
-	    }
-
-	    // set the kiosk
-	    if(isset($parameters['kiosk'])) {
-	        $kiosk =  $parameters['kiosk'];
-	        unset($parameters['kiosk']);
-	    } else {
-	        $kiosk = self::getKiosk();
-	    }
-	    if(!empty($kiosk)) {
-	        $url .= '/'.$kiosk;
-	    }
-
-	    // set the scope
-	    if(isset($parameters['scope'])) {
-	        $url .= '/'.$parameters['scope'];
-	        unset($parameters['scope']);
-	    } else {
-	        $url .= '/'.self::getScope();
-	    }
-
-	    if(isset($parameters['action'])) {
-	        $url .= '/'. $parameters['action'].'.do';
-	        unset($parameters['action']);
-	    } else {
-	        $url .= '/'. self::getAction().'.do';
-	    }
-
-	    if(count($parameters)) {
-	        $url .= '?'.http_build_query($parameters);
-	    }
-
-	    return $url;
-	}
+        return self::buildUrl($parameters);
+    }
 
 	/**
 	 * Import json data into the context parameters
