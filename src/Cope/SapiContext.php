@@ -852,6 +852,15 @@ class SapiContext {
 	}
 
 	/**
+	 * Return all state values for the current request.
+	 * Used by page rendering to expose state as template variables.
+	 * @return array
+	 */
+	public function state(): array {
+		return $this->state ?? [];
+	}
+
+	/**
 	 * Returns true if an error message is present.
 	 * @return boolean
 	 */

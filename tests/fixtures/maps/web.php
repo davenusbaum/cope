@@ -8,4 +8,7 @@ return [
 		'get' => 'legacy.g.php',
 		'page' => 'legacy.php'
 	],
+	'published' => [
+		'page' => 'published.php'
+	],
 ];

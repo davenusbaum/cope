@@ -119,6 +119,25 @@ class LifecycleTest extends \PHPUnit\Framework\TestCase
 		$this->assertEquals("Hello, Deb!\n", $out);
 	}
 
+	public function testLegacyCommandSeesStatePublishedByMiddleware(): void {
+		// middleware (e.g. a future CsrfStage) publishes state
+		// before the command stage; a legacy template reads it
+		// as a plain variable, same as a converted command would.
+		$ctx = new SapiContext(
+			['REQUEST_URI' => '/web/published.do', 'REQUEST_METHOD' => 'GET'],
+			[]
+		);
+		$ctx->setScopeList('web');
+		$ctx->setBaseDir(__DIR__ . '/../../fixtures');
+		$ctx->set('csrf_token', 'tok123');
+
+		ob_start();
+		(new \Cope\Lifecycle\LegacyCommandStage())->handle($ctx);
+		$out = ob_get_clean();
+
+		$this->assertEquals("token=tok123", $out);
+	}
+
 	public function testPageStageRendersStateIntoTemplate(): void {
 		$ctx = $this->webContext();
 		$ctx->setBaseDir(__DIR__ . '/../../fixtures');

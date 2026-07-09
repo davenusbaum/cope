@@ -18,6 +18,12 @@ class LegacyCommandStage extends Stage {
 
 	protected function run(SapiContext $ctx): void {
 
+		// expose state published before this stage (e.g. by
+		// middleware) as plain variables, matching the converted
+		// command contract. Existing variables win; the scripts
+		// below remain the authority in this scope.
+		extract($ctx->state(), EXTR_SKIP);
+
 		// handle a POST
 		if ($ctx->isMethod('POST')) {
 			/* validate input parameters */
