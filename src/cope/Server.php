@@ -33,7 +33,7 @@ class Server extends ArrayMap
      * @param string|null $default
      * @return string|null
      */
-    public function getHeader(string $name, string $default=null): ?string {
+    public function getHeader(string $name, ?string $default=null): ?string {
         $name = strtoupper(str_replace('-','_',$name));
         if (empty($name)) {
             return $default;

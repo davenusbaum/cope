@@ -52,7 +52,7 @@ class Context {
 	 * @param SapiContext|null $context
 	 * @return SapiContext|null the installed context
 	 */
-	public static function setCurrent(SapiContext $context = null) {
+	public static function setCurrent(?SapiContext $context = null) {
 		return (self::$current = $context);
 	}
 
@@ -64,15 +64,6 @@ class Context {
 	 */
 	public static function buildUrl(array $parameters): string {
 		return self::current()->buildUrl($parameters);
-	}
-
-	/**
-	 * Compare a crsf token with the token for this session
-	 * @param string $token
-	 * @return boolean
-	 */
-	public static function checkToken(string $token): bool {
-		return self::current()->checkToken($token);
 	}
 
 	/**
@@ -142,7 +133,7 @@ class Context {
 	 * @param mixed $default optional default value for the supplied property name.
 	 * @return mixed
 	 */
-	public static function getCommand(string $property = null, $default = null) {
+	public static function getCommand(?string $property = null, $default = null) {
 		if (func_num_args() > 0) {
 			return self::current()->getCommand($property, $default);
 		}
@@ -207,7 +198,7 @@ class Context {
 	 * @param string|null $default
 	 * @return string|null
 	 */
-	public static function getHeader(string $name, string $default=null): ?string {
+	public static function getHeader(string $name, ?string $default=null): ?string {
 		return self::current()->getHeader($name, $default);
 	}
 
@@ -374,7 +365,7 @@ class Context {
 	 * @param string $name The name of the script
 	 * @return string the script file name
 	 */
-	public static function getScriptPath(string $name = null): string {
+	public static function getScriptPath(?string $name = null): string {
 		return self::current()->getScriptPath($name);
 	}
 
@@ -403,14 +394,6 @@ class Context {
 	 */
 	public static function getStatus(): int {
 		return self::current()->getStatus();
-	}
-
-	/**
-	 * Returns the CRSF token for this session
-	 * @return string
-	 */
-	public static function getToken(): string {
-		return self::current()->getToken();
 	}
 
 	/**
@@ -518,7 +501,7 @@ class Context {
 	 * @param int|null $accept additional valid status codes as parameters
 	 * @return boolean
 	 */
-	public static function isStatusOk(int $accept = null): bool {
+	public static function isStatusOk(?int $accept = null): bool {
 		return self::current()->isStatusOk(...array_filter(
 			func_get_args(),
 			function ($arg) { return $arg !== null; }
@@ -557,7 +540,7 @@ class Context {
 	 * @param int $type the message type
 	 * @param string|null $field the name of the input field in error
 	 */
-	public static function sendMessage(string $message, int $type = 0, string $field = null) {
+	public static function sendMessage(string $message, int $type = 0, ?string $field = null) {
 		self::current()->sendMessage($message, $type, $field);
 	}
 
@@ -567,7 +550,7 @@ class Context {
 	 * @param int|null $status
 	 * @return boolean
 	 */
-	public static function sendRedirect(string $to, int $status = null): bool {
+	public static function sendRedirect(string $to, ?int $status = null): bool {
 		return self::current()->sendRedirect($to, $status);
 	}
 
@@ -576,7 +559,7 @@ class Context {
 	 * @param int $status_code
 	 * @param string|null $message The message to be sent with the status code.
 	 */
-	public static function sendError(int $status_code, string $message=null) {
+	public static function sendError(int $status_code, ?string $message=null) {
 		self::current()->sendError($status_code, $message);
 	}
 
@@ -584,7 +567,7 @@ class Context {
 	 * Send a 403 to the client.
 	 * @param string|null $message The message to be sent with the status code.
 	 */
-	public static function sendNotAuthorized(string $message = null) {
+	public static function sendNotAuthorized(?string $message = null) {
 		self::current()->sendNotAuthorized($message);
 	}
 

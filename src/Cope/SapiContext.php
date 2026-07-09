@@ -130,7 +130,7 @@ class SapiContext {
 	 * @param array|null $request replaces $_REQUEST
 	 * @param Session|null $session replaces the lazily created session
 	 */
-	public function __construct(array $server = null, array $request = null, Session $session = null) {
+	public function __construct(?array $server = null, ?array $request = null, ?Session $session = null) {
 		if (isset($server)) {
 			$this->server = new Server($server);
 			// an injected world is sealed: don't read the
@@ -211,15 +211,6 @@ class SapiContext {
 		}
 
 		return $url;
-	}
-
-	/**
-	 * Compare a crsf token with the token for this session
-	 * @param string $token
-	 * @return boolean
-	 */
-	public function checkToken(string $token): bool {
-		return (hash_equals($this->getToken(), $token));
 	}
 
 	/**
@@ -308,7 +299,7 @@ class SapiContext {
 	 * @param mixed $default optional default value for the supplied property name.
 	 * @return mixed
 	 */
-	public function getCommand(string $property = null, $default = null) {
+	public function getCommand(?string $property = null, $default = null) {
 		if(!isset($this->command)) {
 
 			// get the command map
@@ -464,7 +455,7 @@ class SapiContext {
 	 * @param string|null $default
 	 * @return string|null
 	 */
-	public function getHeader(string $name, string $default=null): ?string {
+	public function getHeader(string $name, ?string $default=null): ?string {
 		return $this->server()->getHeader($name, $default);
 	}
 
@@ -711,7 +702,7 @@ class SapiContext {
 	 * @param string $name The name of the script
 	 * @return string the script file name
 	 */
-	public function getScriptPath(string $name = null): string {
+	public function getScriptPath(?string $name = null): string {
 		return $this->getScriptDir()
 			.'/'
 			. $this->getScope()
@@ -794,20 +785,6 @@ class SapiContext {
 	public function setStatus(int $status): int {
 		http_response_code($status);
 		return ($this->status = $status);
-	}
-
-	/**
-	 * Returns the CRSF token for this session
-	 * @return string
-	 */
-	public function getToken(): string {
-		try {
-			$token = $_SESSION['crsf'] ?? ($_SESSION['crsf'] = bin2hex(random_bytes(32)));
-		} catch (Exception $e) {
-			trigger_error($e->getMessage(), E_USER_WARNING);
-			$token = '';
-		}
-		return $token;
 	}
 
 	/**
@@ -1048,7 +1025,7 @@ class SapiContext {
 	 * @param int $type the message type
 	 * @param string|null $field the name of the input field in error
 	 */
-	public function sendMessage(string $message, int $type = 0, string $field = null) {
+	public function sendMessage(string $message, int $type = 0, ?string $field = null) {
 		if(E_USER_ERROR == $type) {
 			$this->hasError = true;
 		}
@@ -1065,7 +1042,7 @@ class SapiContext {
 	 * @param int|null $status
 	 * @return boolean
 	 */
-	public function sendRedirect(string $to, int $status = null): bool {
+	public function sendRedirect(string $to, ?int $status = null): bool {
 
 		// make sure headers are not already sent
 		if (headers_sent()) {
@@ -1101,7 +1078,7 @@ class SapiContext {
 	 * @param int $status_code
 	 * @param string|null $message The message to be sent with the status code.
 	 */
-	public function sendError(int $status_code, string $message=null) {
+	public function sendError(int $status_code, ?string $message=null) {
 		$this->setStatus($status_code);
 		echo $message;
 	}
@@ -1110,7 +1087,7 @@ class SapiContext {
 	 * Send a 403 to the client.
 	 * @param string|null $message The message to be sent with the status code.
 	 */
-	public function sendNotAuthorized(string $message = null) {
+	public function sendNotAuthorized(?string $message = null) {
 		$this->sendError(403, $message ?? 'Not authorized');
 	}
 
@@ -1325,7 +1302,7 @@ class SapiContext {
 	 * @param array|null $server
 	 * @return Server
 	 */
-	public function server(array $server = null): Server {
+	public function server(?array $server = null): Server {
 		return $this->server ?? ($this->server = new Server($server));
 	}
 }

@@ -11,4 +11,7 @@ return [
 	'published' => [
 		'page' => 'published.php'
 	],
+	'optout' => [
+		'csrf' => false
+	],
 ];
