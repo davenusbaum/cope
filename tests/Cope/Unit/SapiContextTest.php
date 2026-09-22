@@ -108,4 +108,26 @@ class SapiContextTest extends \PHPUnit\Framework\TestCase
 		$this->assertEquals('ask-remi.com', $ctx->getHost());
 		$this->assertEquals('http://ask-remi.com', $ctx->getBaseUrl());
 	}
+
+	public function testAnEmptyMapIsAMapNotAMissingFile(): void {
+		$ctx = new SapiContext(['REQUEST_URI' => '/empty/hello.do']);
+		$ctx->setScopeList('empty');
+		$ctx->setBaseDir(__DIR__ . '/../../fixtures');
+		$this->assertSame([], $ctx->getCommandMap());
+		$this->assertNull($ctx->getCommand());
+	}
+
+	public function testAMissingMapWarnsAndYieldsNoCommands(): void {
+		$ctx = new SapiContext(['REQUEST_URI' => '/nosuch/hello.do']);
+		$ctx->setScopeList('nosuch');
+		$ctx->setBaseDir(__DIR__ . '/../../fixtures');
+		$warned = false;
+		set_error_handler(function () use (&$warned) { $warned = true; return true; }, E_USER_WARNING);
+		try {
+			$this->assertSame([], $ctx->getCommandMap());
+		} finally {
+			restore_error_handler();
+		}
+		$this->assertTrue($warned);
+	}
 }

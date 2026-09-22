@@ -357,7 +357,10 @@ class SapiContext {
 	public function getCommandMap(bool $keep = false): array {
 		if(!isset($this->commandMap)) {
 			$filename = $this->getMapDir().'/'. $this->getScope().'.php';
-			if (!($map = @include ($filename))) {
+			// a missing file includes as false; a map with no commands is an
+			// empty array, which is a valid map and not an error
+			$map = @include ($filename);
+			if (!is_array($map)) {
 				trigger_error ( "Could not load $filename", E_USER_WARNING );
 				$map = array();
 			}
