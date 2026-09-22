@@ -83,4 +83,29 @@ class SapiContextTest extends \PHPUnit\Framework\TestCase
 		Context::setCurrent($second);
 		$this->assertNull(Context::getKiosk());
 	}
+
+	public function testHostDropsThePortTheHostHeaderCarries(): void {
+		$ctx = new SapiContext([
+			'REQUEST_URI' => '/web/hello.do',
+			'HTTP_HOST' => '127.0.0.1:8089',
+			'SERVER_NAME' => '127.0.0.1',
+			'SERVER_PORT' => 8089,
+		]);
+		$ctx->setScopeList('web');
+		$this->assertEquals('127.0.0.1', $ctx->getHost());
+		$this->assertEquals(8089, $ctx->getPort());
+		$this->assertEquals('http://127.0.0.1:8089', $ctx->getBaseUrl());
+	}
+
+	public function testHostWithoutAPortIsUnchanged(): void {
+		$ctx = new SapiContext([
+			'REQUEST_URI' => '/web/hello.do',
+			'HTTP_HOST' => 'ask-remi.com',
+			'SERVER_NAME' => 'ask-remi.com',
+			'SERVER_PORT' => 80,
+		]);
+		$ctx->setScopeList('web');
+		$this->assertEquals('ask-remi.com', $ctx->getHost());
+		$this->assertEquals('http://ask-remi.com', $ctx->getBaseUrl());
+	}
 }

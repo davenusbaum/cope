@@ -465,9 +465,12 @@ class SapiContext {
 	 */
 	public function getHost(): string {
 		if(!isset($this->host)) {
-			$this->host = (($this->trust && ($host = $this->getHeader('X_FORWARDED_HOST'))) ? $host : null)
+			$host = (($this->trust && ($host = $this->getHeader('X_FORWARDED_HOST'))) ? $host : null)
 				?? $this->getHeader('HOST')
 				?? $this->server()->get('SERVER_NAME');
+			// the Host header carries ":port" whenever the port is not the
+			// default; the port is getPort()'s job, so keep the name only
+			$this->host = preg_replace('/:\d+$/', '', $host);
 		}
 		return $this->host;
 	}
